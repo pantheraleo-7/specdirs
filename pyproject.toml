@@ -1,6 +1,6 @@
 [project]
 name = "specdirs"
-version = "0.1.0a1"
+version = "0.1.0b1"
 description = "Modern, composable, and specifications-compliant standard directories library"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -10,7 +10,7 @@ authors = [
 urls = { Repository = "https://github.com/pantheraleo-7/specdirs" }
 keywords = ["known", "folder", "API", "XDG", "base", "directory", "specification", "user", "dirs", "platform", "project", "app", "dir"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Operating System :: MacOS",
     "Operating System :: Microsoft :: Windows",
