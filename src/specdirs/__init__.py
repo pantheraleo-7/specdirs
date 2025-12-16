@@ -16,7 +16,7 @@ if sys.platform == "win32":
         videos_dir,
     )
 elif sys.platform == "darwin":
-    from .platforms.darwin import (
+    from .platforms.macos import (
         desktop_dir,
         documents_dir,
         downloads_dir,
@@ -25,7 +25,7 @@ elif sys.platform == "darwin":
         pictures_dir,
         public_dir,
     )
-    from .platforms.darwin import movies_dir as videos_dir
+    from .platforms.macos import movies_dir as videos_dir
 else:
     from .xdg import (
         desktop_dir,
@@ -73,7 +73,7 @@ def iter_dirs(*args: Path | Sequence[Path]) -> Iterator[Path]:
 def dir_on(
     *,
     windows: Callable[..., PathOrSequencePath] | None = None,
-    darwin: Callable[..., PathOrSequencePath] | None = None,
+    macos: Callable[..., PathOrSequencePath] | None = None,
     posix: Callable[..., PathOrSequencePath] | None = None,
     others: Callable[..., PathOrSequencePath] | None = None,
 ) -> PathOrSequencePath:
@@ -82,8 +82,8 @@ def dir_on(
             return windows()
     else:  # posix
         if sys.platform == "darwin":
-            if darwin is not None:
-                return darwin()
+            if macos is not None:
+                return macos()
         if posix is not None:
             return posix()
 
@@ -108,14 +108,14 @@ def _windows_data_dir(system, roaming=True):
     )
 
 
-def _darwin_cache_dir(system):
-    from .platforms.darwin import caches_dir
+def _macos_cache_dir(system):
+    from .platforms.macos import caches_dir
 
     return Path("/Library/Caches") if system else caches_dir()
 
 
-def _darwin_data_dir(system):
-    from .platforms.darwin import application_support_dir
+def _macos_data_dir(system):
+    from .platforms.macos import application_support_dir
 
     return Path("/Library/Application Support") if system else application_support_dir()
 
@@ -141,7 +141,7 @@ def _xdg_data_dir(system):
 def cache_dir(*, system: bool = False) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, roaming=False),
-        darwin=lambda: _darwin_cache_dir(system),
+        macos=lambda: _macos_cache_dir(system),
         others=lambda: _xdg_cache_dir(system),
     )
 
@@ -149,7 +149,7 @@ def cache_dir(*, system: bool = False) -> Path:
 def config_dir(*, system: bool = False, windows_roaming: bool = True) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, windows_roaming),
-        darwin=lambda: _darwin_data_dir(system),
+        macos=lambda: _macos_data_dir(system),
         others=lambda: _xdg_config_dir(system),
     )
 
@@ -157,22 +157,22 @@ def config_dir(*, system: bool = False, windows_roaming: bool = True) -> Path:
 def data_dir(*, system: bool = False, windows_roaming: bool = True) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, windows_roaming),
-        darwin=lambda: _darwin_data_dir(system),
+        macos=lambda: _macos_data_dir(system),
         others=lambda: _xdg_data_dir(system),
     )
 
 
-def system_config_dirs(*, darwin_asposix: bool = False) -> list[Path]:
+def system_config_dirs(*, macos_asposix: bool = False) -> list[Path]:
     return dir_on(
         windows=lambda: [_windows_data_dir(system=True)],
-        darwin=None if darwin_asposix else lambda: [_darwin_data_dir(system=True)],
+        macos=None if macos_asposix else lambda: [_macos_data_dir(system=True)],
         posix=lambda: [Path("/usr/local/etc"), Path("/etc")],
     )
 
 
-def system_data_dirs(*, darwin_asposix: bool = False) -> list[Path]:
+def system_data_dirs(*, macos_asposix: bool = False) -> list[Path]:
     return dir_on(
         windows=lambda: [_windows_data_dir(system=True)],
-        darwin=None if darwin_asposix else lambda: [_darwin_data_dir(system=True)],
+        macos=None if macos_asposix else lambda: [_macos_data_dir(system=True)],
         posix=lambda: [Path("/usr/local/share"), Path("/usr/share")],
     )
