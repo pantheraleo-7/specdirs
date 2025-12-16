@@ -45,6 +45,8 @@ if TYPE_CHECKING:
 
 __all__ = [
     "iter_dirs",
+    "app_name",
+    "join_on",
     "dir_on",
     "cache_dir",
     "config_dir",
@@ -70,6 +72,50 @@ def iter_dirs(*args: Path | Sequence[Path]) -> Iterator[Path]:
             yield from arg
 
 
+def _on(windows=None, macos=None, posix=None, others=None):
+    if sys.platform == "win32":
+        if windows is not None:
+            return windows
+    else:  # posix
+        if sys.platform == "darwin":
+            if macos is not None:
+                return macos
+        if posix is not None:
+            return posix
+
+    if others is not None:
+        return others
+
+    raise TypeError("at least 2 of `windows`, `posix`, and `others` must be given")
+
+
+def app_name(
+    app: str,
+    org: str | None = None,
+    tld: str | None = None,
+    *,
+    macos_asposix: bool = False,
+) -> str:
+    return _on(
+        windows="\\".join(filter(None, [org, app])),
+        macos=None
+        if macos_asposix
+        else ".".join(filter(None, [tld, org, app])).replace(" ", "-"),
+        posix=app.replace(" ", "").lower(),
+    )
+
+
+def join_on(
+    path: str | Path,
+    *,
+    windows: str | Path | None = None,
+    macos: str | Path | None = None,
+    posix: str | Path | None = None,
+    others: str | Path | None = None,
+) -> Path:
+    return Path(path, _on(windows, macos, posix, others))
+
+
 def dir_on(
     *,
     windows: Callable[..., PathOrSequencePath] | None = None,
@@ -77,20 +123,7 @@ def dir_on(
     posix: Callable[..., PathOrSequencePath] | None = None,
     others: Callable[..., PathOrSequencePath] | None = None,
 ) -> PathOrSequencePath:
-    if sys.platform == "win32":
-        if windows is not None:
-            return windows()
-    else:  # posix
-        if sys.platform == "darwin":
-            if macos is not None:
-                return macos()
-        if posix is not None:
-            return posix()
-
-    if others is not None:
-        return others()
-
-    raise TypeError("at least 2 of `windows`, `posix`, and `others` must be given")
+    return _on(windows, macos, posix, others)()
 
 
 def _windows_data_dir(system, roaming=True):
