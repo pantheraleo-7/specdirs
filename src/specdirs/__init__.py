@@ -120,45 +120,49 @@ def _macos_data_dir(system):
     return Path("/Library/Application Support") if system else application_support_dir()
 
 
-def _xdg_cache_dir(system):
+def _posix_cache_dir(system):
     from .xdg import cache_dir
 
     return Path("/var/cache") if system else cache_dir()
 
 
-def _xdg_config_dir(system):
+def _posix_config_dir(system):
     from .xdg import config_dir
 
     return Path("/etc") if system else config_dir()
 
 
-def _xdg_data_dir(system):
+def _posix_data_dir(system):
     from .xdg import data_dir
 
     return Path("/usr/share") if system else data_dir()
 
 
-def cache_dir(*, system: bool = False) -> Path:
+def cache_dir(*, system: bool = False, macos_asposix: bool = False) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, roaming=False),
-        macos=lambda: _macos_cache_dir(system),
-        others=lambda: _xdg_cache_dir(system),
+        macos=None if macos_asposix else lambda: _macos_cache_dir(system),
+        posix=lambda: _posix_cache_dir(system),
     )
 
 
-def config_dir(*, system: bool = False, windows_roaming: bool = True) -> Path:
+def config_dir(
+    *, system: bool = False, windows_roaming: bool = True, macos_asposix: bool = False
+) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, windows_roaming),
-        macos=lambda: _macos_data_dir(system),
-        others=lambda: _xdg_config_dir(system),
+        macos=None if macos_asposix else lambda: _macos_data_dir(system),
+        posix=lambda: _posix_config_dir(system),
     )
 
 
-def data_dir(*, system: bool = False, windows_roaming: bool = True) -> Path:
+def data_dir(
+    *, system: bool = False, windows_roaming: bool = True, macos_asposix: bool = False
+) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, windows_roaming),
-        macos=lambda: _macos_data_dir(system),
-        others=lambda: _xdg_data_dir(system),
+        macos=None if macos_asposix else lambda: _macos_data_dir(system),
+        posix=lambda: _posix_data_dir(system),
     )
 
 
