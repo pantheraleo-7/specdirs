@@ -1,6 +1,6 @@
 [project]
 name = "specdirs"
-version = "0.1.0b4"
+version = "0.1.0rc1"
 description = "Modern, composable, and specifications-compliant standard directories library"
 license = "MIT"
 license-files = ["LICENSE"]

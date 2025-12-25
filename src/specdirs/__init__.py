@@ -51,6 +51,7 @@ __all__ = [
     "cache_dir",
     "config_dir",
     "data_dir",
+    "log_dir",
     "system_config_dirs",
     "system_data_dirs",
     "home_dir",
@@ -61,6 +62,7 @@ __all__ = [
     "pictures_dir",
     "public_dir",
     "videos_dir",
+    "AppDirs",
 ]
 
 
@@ -86,22 +88,20 @@ def _on(windows=None, macos=None, posix=None, others=None):
     if others is not None:
         return others
 
-    raise TypeError("at least 2 of `windows`, `posix`, and `others` must be given")
+    raise NotImplementedError(f"unsupported platform '{sys.platform}'")
 
 
 def app_name(
-    app: str,
-    org: str | None = None,
-    tld: str | None = None,
-    *,
-    macos_asposix: bool = False,
+    app: str, org: str = "", tld: str = "", *, posix_lowercase_app: bool = True
 ) -> str:
     return _on(
         windows="\\".join(filter(None, [org, app])),
-        macos=None
-        if macos_asposix
-        else ".".join(filter(None, [tld, org, app])).replace(" ", "-"),
-        posix=app.replace(" ", "").lower(),
+        posix=".".join(
+            filter(
+                None,
+                [tld.lower(), org.lower(), app.lower() if posix_lowercase_app else app],
+            )
+        ).replace(" ", "-"),
     )
 
 
@@ -153,22 +153,46 @@ def _macos_data_dir(system):
     return Path("/Library/Application Support") if system else application_support_dir()
 
 
+def _macos_log_dir(system):
+    from .platforms.macos import logs_dir
+
+    return Path("/Library/Logs") if system else logs_dir()
+
+
 def _posix_cache_dir(system):
     from .xdg import cache_dir
 
     return Path("/var/cache") if system else cache_dir()
 
 
-def _posix_config_dir(system):
+def _posix_config_dir(system, local=False):
     from .xdg import config_dir
 
-    return Path("/etc") if system else config_dir()
+    return Path("/", "usr/local" * local, "etc") if system else config_dir()
 
 
-def _posix_data_dir(system):
+def _posix_data_dir(system, local=False):
     from .xdg import data_dir
 
-    return Path("/usr/share") if system else data_dir()
+    return Path("/usr", "local" * local, "share") if system else data_dir()
+
+
+def _posix_log_dir(system):
+    from .xdg import state_dir
+
+    return Path("/var/log") if system else state_dir()
+
+
+def _posix_system_config_dirs(xdg):
+    from .xdg import config_dirs
+
+    return config_dirs() if xdg else [Path("/usr/local/etc"), Path("/etc")]
+
+
+def _posix_system_data_dirs(xdg):
+    from .xdg import data_dirs
+
+    return data_dirs() if xdg else [Path("/usr/local/share"), Path("/usr/share")]
 
 
 def cache_dir(*, system: bool = False, macos_asposix: bool = False) -> Path:
@@ -180,36 +204,134 @@ def cache_dir(*, system: bool = False, macos_asposix: bool = False) -> Path:
 
 
 def config_dir(
-    *, system: bool = False, windows_roaming: bool = True, macos_asposix: bool = False
+    *, system: bool = False, macos_asposix: bool = False, posix_local: bool = False
 ) -> Path:
     return dir_on(
-        windows=lambda: _windows_data_dir(system, windows_roaming),
+        windows=lambda: _windows_data_dir(system, roaming=True),
         macos=None if macos_asposix else lambda: _macos_data_dir(system),
-        posix=lambda: _posix_config_dir(system),
+        posix=lambda: _posix_config_dir(system, posix_local),
     )
 
 
 def data_dir(
-    *, system: bool = False, windows_roaming: bool = True, macos_asposix: bool = False
+    *,
+    system: bool = False,
+    windows_roaming: bool = True,
+    macos_asposix: bool = False,
+    posix_local: bool = False,
 ) -> Path:
     return dir_on(
         windows=lambda: _windows_data_dir(system, windows_roaming),
         macos=None if macos_asposix else lambda: _macos_data_dir(system),
-        posix=lambda: _posix_data_dir(system),
+        posix=lambda: _posix_data_dir(system, posix_local),
     )
 
 
-def system_config_dirs(*, macos_asposix: bool = False) -> list[Path]:
+def log_dir(*, system: bool = False, macos_asposix: bool = False) -> Path:
+    return dir_on(
+        windows=lambda: _windows_data_dir(system, roaming=False),
+        macos=None if macos_asposix else lambda: _macos_log_dir(system),
+        posix=lambda: _posix_log_dir(system),
+    )
+
+
+def system_config_dirs(
+    *, macos_asposix: bool = False, posix_xdg: bool = False
+) -> list[Path]:
     return dir_on(
         windows=lambda: [_windows_data_dir(system=True)],
         macos=None if macos_asposix else lambda: [_macos_data_dir(system=True)],
-        posix=lambda: [Path("/usr/local/etc"), Path("/etc")],
+        posix=lambda: _posix_system_config_dirs(posix_xdg),
     )
 
 
-def system_data_dirs(*, macos_asposix: bool = False) -> list[Path]:
+def system_data_dirs(
+    *, macos_asposix: bool = False, posix_xdg: bool = False
+) -> list[Path]:
     return dir_on(
         windows=lambda: [_windows_data_dir(system=True)],
         macos=None if macos_asposix else lambda: [_macos_data_dir(system=True)],
-        posix=lambda: [Path("/usr/local/share"), Path("/usr/share")],
+        posix=lambda: _posix_system_data_dirs(posix_xdg),
     )
+
+
+class AppDirs:
+    def __init__(
+        self,
+        app_name: str,
+        *,
+        system: bool = False,
+        windows_roaming: bool = True,
+        macos_asposix: bool = False,
+        posix_local: bool = False,
+        posix_xdg: bool = False,
+    ) -> None:
+        self.app_name = app_name
+        self.system = system
+        self.windows_roaming = windows_roaming
+        self.macos_asposix = macos_asposix
+        self.posix_local = posix_local
+        self.posix_xdg = posix_xdg
+
+    def _attr_if_none(self, **kwargs):
+        for key, val in kwargs.items():
+            if val is None:
+                kwargs[key] = getattr(self, key)
+        return kwargs
+
+    def cache_dir(
+        self, *, system: bool | None = None, macos_asposix: bool | None = None
+    ) -> Path:
+        kwargs = self._attr_if_none(system=system, macos_asposix=macos_asposix)
+        return join_on(cache_dir(**kwargs) / self.app_name, windows="Caches", posix="")
+
+    def config_dir(
+        self,
+        *,
+        system: bool | None = None,
+        macos_asposix: bool | None = None,
+        posix_local: bool | None = None,
+    ) -> Path:
+        kwargs = self._attr_if_none(
+            system=system, macos_asposix=macos_asposix, posix_local=posix_local
+        )
+        return join_on(
+            config_dir(**kwargs) / self.app_name, windows="Settings", posix=""
+        )
+
+    def data_dir(
+        self,
+        *,
+        system: bool | None = None,
+        windows_roaming: bool | None = None,
+        macos_asposix: bool | None = None,
+        posix_local: bool | None = None,
+    ) -> Path:
+        kwargs = self._attr_if_none(
+            system=system,
+            windows_roaming=windows_roaming,
+            macos_asposix=macos_asposix,
+            posix_local=posix_local,
+        )
+        return data_dir(**kwargs) / self.app_name
+
+    def log_dir(
+        self, *, system: bool | None = None, macos_asposix: bool | None = None
+    ) -> Path:
+        kwargs = self._attr_if_none(system=system, macos_asposix=macos_asposix)
+        return join_on(log_dir(**kwargs) / self.app_name, windows="Logs", posix="")
+
+    def system_config_dirs(
+        self, *, macos_asposix: bool | None = None, posix_xdg: bool | None = None
+    ) -> list[Path]:
+        kwargs = self._attr_if_none(macos_asposix=macos_asposix, posix_xdg=posix_xdg)
+        return [
+            join_on(dir / self.app_name, windows="Settings", posix="")
+            for dir in system_config_dirs(**kwargs)
+        ]
+
+    def system_data_dirs(
+        self, *, macos_asposix: bool | None = None, posix_xdg: bool | None = None
+    ) -> list[Path]:
+        kwargs = self._attr_if_none(macos_asposix=macos_asposix, posix_xdg=posix_xdg)
+        return [dir / self.app_name for dir in system_data_dirs(**kwargs)]

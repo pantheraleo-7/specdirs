@@ -11,6 +11,10 @@ def caches_dir() -> Path:
     return home_dir() / "Library/Caches"
 
 
+def logs_dir() -> Path:
+    return home_dir() / "Library/Logs"
+
+
 def desktop_dir() -> Path:
     return home_dir() / "Desktop"
 
