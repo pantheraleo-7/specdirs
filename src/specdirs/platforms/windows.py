@@ -35,7 +35,7 @@ if sys.platform == "win32":
     _CoTaskMemFree.restype = None
     _CoTaskMemFree.argtypes = [wintypes.LPVOID]
 
-    _SHGetKnownFolderPath.restype = wintypes.LONG
+    _SHGetKnownFolderPath.restype = ctypes.HRESULT
     _SHGetKnownFolderPath.argtypes = [
         ctypes.POINTER(GUID),
         wintypes.DWORD,
@@ -43,18 +43,17 @@ if sys.platform == "win32":
         ctypes.POINTER(wintypes.LPWSTR),
     ]
 
-
-def known_folder(guid: GUID) -> Path:
-    ptr = wintypes.LPWSTR()
-    hresult = _SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(ptr))
-
-    try:
-        if hresult == 0:
+    def known_folder(guid: GUID) -> Path:
+        ptr = wintypes.LPWSTR()
+        try:
+            _SHGetKnownFolderPath(ctypes.byref(guid), 0, None, ctypes.byref(ptr))
             return Path(ptr.value)  # type: ignore
-        else:
-            raise ctypes.WinError(hresult)
-    finally:
-        _CoTaskMemFree(ptr)
+        finally:
+            _CoTaskMemFree(ptr)
+else:
+
+    def known_folder(_: GUID) -> Path:
+        raise OSError(f"KnownFolder API call on non-Windows platform '{sys.platform}'")
 
 
 def home_dir() -> Path:

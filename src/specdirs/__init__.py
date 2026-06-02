@@ -1,8 +1,7 @@
-from __future__ import annotations
-
 import sys
+from collections.abc import Callable, Iterator, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar
+from typing import TypeVar
 
 if sys.platform == "win32":
     from .platforms.windows import (
@@ -38,11 +37,6 @@ else:
         videos_dir,
     )
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
-
-    PathOrSequencePath = TypeVar("PathOrSequencePath", bound=Path | Sequence[Path])
-
 __all__ = [
     "iter_dirs",
     "app_name",
@@ -64,6 +58,8 @@ __all__ = [
     "videos_dir",
     "AppDirs",
 ]
+
+PathOrSequencePath = TypeVar("PathOrSequencePath", bound=Path | Sequence[Path])
 
 
 def iter_dirs(*args: Path | Sequence[Path]) -> Iterator[Path]:
