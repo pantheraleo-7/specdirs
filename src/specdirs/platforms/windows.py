@@ -52,7 +52,7 @@ if sys.platform == "win32":
             _CoTaskMemFree(ptr)
 else:
 
-    def known_folder(_: GUID) -> Path:
+    def known_folder(guid: GUID) -> Path:
         raise OSError(f"KnownFolder API call on non-Windows platform '{sys.platform}'")
 
 
